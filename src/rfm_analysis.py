@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[28]:
 
 
 import logging
@@ -17,7 +17,7 @@ import seaborn as sns
 warnings.filterwarnings("ignore")
 
 
-# In[2]:
+# In[29]:
 
 
 #─────────────────────────────────────────────────────────────────
@@ -31,7 +31,7 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 
-# In[4]:
+# In[30]:
 
 
 # 2. PATHS & CONFIG
@@ -62,7 +62,7 @@ print(f"OUTPUT_DIR : {OUTPUT_DIR}")
 print(f"REPORT_DIR : {REPORT_DIR}")
 
 
-# In[5]:
+# In[31]:
 
 
 #─────────────────────────────────────────────────────────────────
@@ -128,7 +128,7 @@ SEGMENT_META = {
 }
 
 
-# In[6]:
+# In[32]:
 
 
 #─────────────────────────────────────────────────────────────────
@@ -173,7 +173,7 @@ def load_data(path: Path) -> pd.DataFrame:
     return df
 
 
-# In[7]:
+# In[33]:
 
 
 def compute_rfm(df: pd.DataFrame, offset_days: int = 1) -> pd.DataFrame:
@@ -215,7 +215,7 @@ def compute_rfm(df: pd.DataFrame, offset_days: int = 1) -> pd.DataFrame:
     return rfm
 
 
-# In[8]:
+# In[34]:
 
 
 def score_rfm(rfm: pd.DataFrame, n: int = 5) -> pd.DataFrame:
@@ -270,7 +270,7 @@ def score_rfm(rfm: pd.DataFrame, n: int = 5) -> pd.DataFrame:
     return rfm
 
 
-# In[9]:
+# In[35]:
 
 
 def apply_segments(rfm: pd.DataFrame) -> pd.DataFrame:
@@ -298,7 +298,7 @@ def apply_segments(rfm: pd.DataFrame) -> pd.DataFrame:
     return rfm
 
 
-# In[10]:
+# In[36]:
 
 
 def segment_summary(rfm: pd.DataFrame) -> pd.DataFrame:
@@ -342,37 +342,20 @@ def segment_summary(rfm: pd.DataFrame) -> pd.DataFrame:
     return summary
 
 
-# In[11]:
+# In[42]:
 
-
-#─────────────────────────────────────────────────────────────────
-# 5. VISUALISATIONS
-# ─────────────────────────────────────────────────────────────────
-
-DARK_BG   = "#0d0f14"
-SURFACE   = "#13161e"
 
 def _apply_dark_style(fig, ax):
-    """Apply consistent dark theme to a matplotlib figure."""
     fig.patch.set_facecolor(DARK_BG)
     ax.set_facecolor(SURFACE)
     ax.tick_params(colors="#94a3b8")
-    ax.spines[:].set_color("#252a38")
+    for spine in ax.spines.values():
+        spine.set_color("#252a38")
     for label in ax.get_xticklabels() + ax.get_yticklabels():
         label.set_color("#94a3b8")
 
 
-def plot_segment_distribution(rfm: pd.DataFrame, save_path: Path) -> None:
-    """
-    Horizontal bar chart: customer count per segment.
-
-    WHY horizontal? Segment names are long — horizontal avoids rotation
-    and is easier to read at a glance.
-
-    Args:
-        rfm (pd.DataFrame): Segmented RFM dataframe
-        save_path (Path): Output PNG path
-    """
+def plot_segment_distribution(rfm, save_path):
     seg_counts = rfm["Segment"].value_counts().sort_values()
     colors = [SEGMENT_META[s]["color"] for s in seg_counts.index]
 
@@ -390,7 +373,8 @@ def plot_segment_distribution(rfm: pd.DataFrame, save_path: Path) -> None:
     ax.set_xlabel("Number of Customers", color="#64748b", fontsize=10)
     ax.set_title("RFM Customer Segmentation — Customer Count per Segment",
                  color="#e2e8f0", fontsize=13, fontweight="bold", pad=15)
-    ax.spines[:].set_visible(False)
+    for spine in ax.spines.values():           # ← fixed
+        spine.set_visible(False)
     ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{int(x):,}"))
     for label in ax.get_yticklabels():
         label.set_color("#e2e8f0")
@@ -398,29 +382,13 @@ def plot_segment_distribution(rfm: pd.DataFrame, save_path: Path) -> None:
     plt.tight_layout()
     plt.savefig(save_path, dpi=150, bbox_inches="tight", facecolor=DARK_BG)
     plt.close()
-    log.info(f"  Saved: {save_path.name}")
+    print(f"  Saved: {save_path.name}")
 
 
-# In[12]:
-
-
-def plot_rfm_scatter(rfm: pd.DataFrame, save_path: Path) -> None:
-    """
-    2D scatter: Recency vs Frequency, bubble size = Monetary, colour = Segment.
-
-    WHY this chart?
-    It shows all three RFM dimensions simultaneously and visually separates
-    customer clusters. Champions appear top-right (low recency days, high
-    frequency); Lost customers appear bottom-left.
-
-    Args:
-        rfm (pd.DataFrame): Segmented RFM dataframe
-        save_path (Path): Output PNG path
-    """
+def plot_rfm_scatter(rfm, save_path):
     fig, ax = plt.subplots(figsize=(11, 7))
     _apply_dark_style(fig, ax)
 
-    # Normalise Monetary for bubble size (avoid zero-size dots)
     mn, mx = rfm["Monetary"].min(), rfm["Monetary"].max()
     sizes = ((rfm["Monetary"] - mn) / (mx - mn)) * 200 + 10
 
@@ -432,12 +400,10 @@ def plot_rfm_scatter(rfm: pd.DataFrame, save_path: Path) -> None:
                    s=sizes[mask], c=meta["color"], alpha=0.6, label=seg,
                    edgecolors="none")
 
-    ax.set_xlabel("Recency (days since last purchase)  Lower = Better",
-                  color="#64748b", fontsize=10)
+    ax.set_xlabel("Recency (days)  Lower = Better", color="#64748b", fontsize=10)
     ax.set_ylabel("Frequency (unique orders)", color="#64748b", fontsize=10)
     ax.set_title("RFM Scatter: Recency vs Frequency\n(bubble size = Monetary value)",
                  color="#e2e8f0", fontsize=13, fontweight="bold", pad=15)
-
     legend = ax.legend(loc="upper right", framealpha=0.2,
                        labelcolor="#e2e8f0", fontsize=8)
     legend.get_frame().set_facecolor("#1a1e2a")
@@ -445,52 +411,37 @@ def plot_rfm_scatter(rfm: pd.DataFrame, save_path: Path) -> None:
     plt.tight_layout()
     plt.savefig(save_path, dpi=150, bbox_inches="tight", facecolor=DARK_BG)
     plt.close()
-    log.info(f"  Saved: {save_path.name}")
+    print(f"  Saved: {save_path.name}")
 
 
-# In[13]:
-
-
-def plot_rfm_heatmap(rfm: pd.DataFrame, save_path: Path) -> None:
-    """
-    Heatmap: Average Monetary value across R_Score x F_Score grid.
-
-    WHY this chart?
-    It VALIDATES the scoring logic. You should see a clear gradient:
-    the top-right cell (R=5, F=5) should have the highest average revenue.
-    Any anomalies in the gradient suggest scoring issues to investigate.
-
-    Args:
-        rfm (pd.DataFrame): Segmented RFM dataframe
-        save_path (Path): Output PNG path
-    """
+def plot_rfm_heatmap(rfm, save_path):
     pivot = rfm.pivot_table(
         values="Monetary", index="R_Score", columns="F_Score", aggfunc="mean"
-    ).sort_index(ascending=False)   # R=5 at top (most recent)
+    ).sort_index(ascending=False)
 
     fig, ax = plt.subplots(figsize=(9, 6))
     fig.patch.set_facecolor(DARK_BG)
     ax.set_facecolor(DARK_BG)
 
-    sns.heatmap(
-        pivot, ax=ax, cmap="YlOrRd", annot=True, fmt=".0f",
-        linewidths=0.5, linecolor=DARK_BG,
-        cbar_kws={"label": "Avg Revenue (GBP)"},
-    )
+    sns.heatmap(pivot, ax=ax, cmap="YlOrRd", annot=True, fmt=".0f",
+                linewidths=0.5, linecolor=DARK_BG,
+                cbar_kws={"label": "Avg Revenue (GBP)"})
 
-    ax.set_title("Avg Revenue (GBP) by R x F Score — validates scoring gradient",
+    ax.set_title("Avg Revenue by R x F Score",
                  color="#e2e8f0", fontsize=12, fontweight="bold", pad=15)
-    ax.set_xlabel("F Score (Frequency)  Higher = More Orders", color="#64748b", fontsize=10)
-    ax.set_ylabel("R Score (Recency)    Higher = More Recent", color="#64748b", fontsize=10)
+    ax.set_xlabel("F Score (Frequency)", color="#64748b", fontsize=10)
+    ax.set_ylabel("R Score (Recency)", color="#64748b", fontsize=10)
     ax.tick_params(colors="#e2e8f0")
 
     plt.tight_layout()
     plt.savefig(save_path, dpi=150, bbox_inches="tight", facecolor=DARK_BG)
     plt.close()
-    log.info(f"  Saved: {save_path.name}")
+    print(f"  Saved: {save_path.name}")
+
+print("✅ Plot functions redefined — now run: rfm_result = run_rfm_pipeline()")
 
 
-# In[14]:
+# In[44]:
 
 
 #─────────────────────────────────────────────────────────────────
@@ -582,9 +533,15 @@ def run_rfm_pipeline() -> pd.DataFrame:
     print(f"  reports/rfm_segment_distribution.png")
     print(f"  reports/rfm_scatter.png")
     print(f"  reports/rfm_heatmap.png")
-    print("\n  Next: Run 04_cohort_analysis.py\n")
 
     return rfm
+
+
+# In[45]:
+
+
+# Run the full pipeline
+rfm_result = run_rfm_pipeline()
 
 
 # In[ ]:
