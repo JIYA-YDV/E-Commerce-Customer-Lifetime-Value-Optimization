@@ -1,0 +1,5 @@
+"Current_Segment","Path_to_Upgrade","Customers","Avg_Current_Spend","Avg_Order_Value","Est_Revenue_If_They_Return"
+"At Risk","Recent purchase → Loyal Customer","110","1513","488","976"
+"Potential Loyalists","One more order → Loyal Customer","664","440","362","724"
+"Hibernating","Any purchase → Promising/New Customer","1057","389","346","692"
+"Lost","Already in top segment","92","293","132","264"
